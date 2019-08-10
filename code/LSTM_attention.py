@@ -56,7 +56,7 @@ class LSTMAttention(OurModel):
         
         # Configure LSTM cells
         
-        cell = tf.nn.rnn_cell.BasicLSTMCell(num_units = self.config.hidden_size)
+        cell = tf.nn.rnn_cell.LSTMCell(num_units = self.config.hidden_size) #tf.nn.rnn_cell.BasicLSTMCell(num_units = self.config.hidden_size)
         cell = tf.nn.rnn_cell.DropoutWrapper(cell, output_keep_prob = self.dropout_placeholder)
 
         # Create an initializer
@@ -70,7 +70,17 @@ class LSTMAttention(OurModel):
             Y = tf.slice(rnnOutput[0], begin = [0, 0, 0], size = [-1, self.config.attention_length, -1])
             h_N = rnnOutput[1][1] # batch_size, cell.state_size
         elif self.config.n_layers > 1:
-            stacked_lstm = tf.nn.rnn_cell.MultiRNNCell([cell] * self.config.n_layers)
+            rnn_layers = []
+            
+            #Added by Manisha
+            for _ in range(self.config.n_layers):
+                cell = tf.nn.rnn_cell.LSTMCell(num_units = self.config.hidden_size)
+                cell = tf.nn.rnn_cell.DropoutWrapper(cell, output_keep_prob = self.dropout_placeholder)
+                rnn_layers.append(cell)
+            
+            stacked_lstm = tf.nn.rnn_cell.MultiRNNCell(rnn_layers)
+            #Added by Manisha
+            #stacked_lstm = tf.nn.rnn_cell.MultiRNNCell([cell] * self.config.n_layers)
             rnnOutput = tf.nn.dynamic_rnn(stacked_lstm, inputs = x, dtype = tf.float64, sequence_length = self.seqlen_placeholder) #MODIF
             # print('rnnOutput[0] shape:', rnnOutput[0].get_shape())
             Y = tf.slice(rnnOutput[0], begin = [0, 0, 0], size = [-1, self.config.attention_length, -1])
@@ -89,7 +99,7 @@ class LSTMAttention(OurModel):
         M = tf.tanh(M_1 + M_2)
         alpha = tf.reshape(tf.nn.softmax(tf.matmul(tf.reshape(M, shape = (-1, self.config.hidden_size)), w)), shape = (-1, self.config.attention_length))
 
-        r = tf.squeeze(tf.batch_matmul(tf.transpose(tf.expand_dims(alpha, 2), perm = [0, 2, 1]), Y))
+        r = tf.squeeze(tf.matmul(tf.transpose(tf.expand_dims(alpha, 2), perm = [0, 2, 1]), Y)) #Added by Manisha
         h_star = tf.tanh(tf.matmul(r, W_p) + tf.matmul(h_N, W_x))
 
         # Output matrices
@@ -107,9 +117,11 @@ class LSTMAttention(OurModel):
         Returns:
             embeddings: tf.Tensor of shape (None, max_length, n_features*embed_size)
         """
-        # option = config.trainable_embeddings
+        # option = config.trainable_embeddings\
+        varW = tf.Variable(tf.constant(0.0, shape=[self.config.max_length, self.config.embed_size], dtype=tf.float64), name="varW") #Added by Manisha
         if option == 'Variable':
-            embeddings_temp = tf.nn.embedding_lookup(params = tf.Variable(self.config.pretrained_embeddings), ids = self.inputs_placeholder)
+             embeddings_temp = tf.nn.embedding_lookup(varW, ids = self.inputs_placeholder) #chnaged by Manisha
+            #embeddings_temp = tf.nn.embedding_lookup(params = tf.Variable(self.config.pretrained_embeddings), ids = self.inputs_placeholder)
         elif option == 'Constant':
             embeddings_temp = tf.nn.embedding_lookup(params = tf.constant(self.config.pretrained_embeddings), ids = self.inputs_placeholder)
         embeddings = tf.reshape(embeddings_temp, shape = (-1, self.config.max_length, self.config.embed_size))

@@ -17,27 +17,28 @@ from datetime import datetime
 
 import tensorflow as tf
 import numpy as np
-import cPickle as pickle
+import pickle
 
 from run_text_processing import get_data, save_data_pickle
 
 from our_util import Progbar, minibatches, pack_labels, split_data, softmax, get_performance, convertOutputs, downsample_label
 
 from basicLSTM_model_config import *
-
+base_path = '/Users/Monu/NLP/Stance/code'
+#base_path = '/home/jupiter/Manisha/code/'
 logger = logging.getLogger("hw3.q3")
 logger.setLevel(logging.DEBUG)
 logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
 
 def run_save_data_pickle():
-    save_data_pickle(outfilename = '/../../glove/twitter50d_h_ids_b_ids_pickle.p',
+    save_data_pickle(outfilename = '/glove/twitter50d_h_ids_b_ids_pickle.p',
                     embedding_type = 'twitter.27B.50d',
                     parserOption = 'nltk')
     
-def run_lstm(config, outputpath = '../../xp', final = False):
+def run_lstm(config, outputpath = base_path + '/xp', final = False):
     config, data_dict = get_data(config,
-                                filename_embeddings = '/../../glove/glove.twitter.27B.50d.txt',
-                                pickle_path = '/../../glove/twitter50d_h_ids_b_ids_pickle.p',
+                                filename_embeddings = '/glove/glove.twitter.27B.50d.txt',
+                                pickle_path = '/glove/twitter50d_h_ids_b_ids_pickle.p',
                                 concat = True)
 
     y = data_dict['y']

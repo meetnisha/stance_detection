@@ -42,12 +42,20 @@ class LSTMCondModel(OurModel):
             embeddings_headings: tf.Tensor of shape (None, h_max_len, embed_size)
             embeddings_bodies: tf.Tensor of shape (None, b_max_len, embed_size)
         """
+        
         if option == 'Constant':
+            #embeddings_headings_temp = tf.nn.embedding_lookup(params = tf.constant(self.config.pretrained_embeddings), ids = self.headings_placeholder)
+            #embeddings_bodies_temp   = tf.nn.embedding_lookup(params = tf.constant(self.config.pretrained_embeddings), ids = self.bodies_placeholder)
             embeddings_headings_temp = tf.nn.embedding_lookup(params = tf.constant(self.config.pretrained_embeddings), ids = self.headings_placeholder)
-            embeddings_bodies_temp   = tf.nn.embedding_lookup(params = tf.constant(self.config.pretrained_embeddings), ids = self.bodies_placeholder)
+            embeddings_bodies_temp   = tf.nn.embedding_lookup(params = tf.constant(self.config.pretrained_embeddings), ids = self.bodies_placeholder)             
         elif option == 'Variable':
-            embeddings_headings_temp = tf.nn.embedding_lookup(params = tf.Variable(self.config.pretrained_embeddings), ids = self.headings_placeholder)
-            embeddings_bodies_temp   = tf.nn.embedding_lookup(params = tf.Variable(self.config.pretrained_embeddings), ids = self.bodies_placeholder)
+            headW = tf.Variable(tf.constant(0.0, shape=[self.config.h_max_len, self.config.embed_size], dtype=tf.float64), name="headW") #Added by Manisha
+            bodyW = tf.Variable(tf.constant(0.0, shape=[self.config.b_max_len, self.config.embed_size], dtype=tf.float64), name="bodyW") #Added by Manisha
+            embeddings_headings_temp = tf.nn.embedding_lookup(headW, ids = self.headings_placeholder)
+            embeddings_bodies_temp = tf.nn.embedding_lookup(bodyW, ids = self.bodies_placeholder)
+            
+            #embeddings_headings_temp = tf.nn.embedding_lookup(params = tf.Variable(self.config.pretrained_embeddings), ids = self.headings_placeholder)
+            #embeddings_bodies_temp   = tf.nn.embedding_lookup(params = tf.Variable(self.config.pretrained_embeddings), ids = self.bodies_placeholder)
         embeddings_headings = tf.reshape(embeddings_headings_temp, shape = (-1, self.config.h_max_len, self.config.embed_size))
         embeddings_bodies = tf.reshape(embeddings_bodies_temp, shape = (-1, self.config.b_max_len, self.config.embed_size))
         return embeddings_headings, embeddings_bodies
@@ -57,7 +65,7 @@ class LSTMCondModel(OurModel):
         with tf.variable_scope('head'):
 
             # LSTM that handles the headers
-            cell_h = tf.nn.rnn_cell.BasicLSTMCell(num_units = self.config.hidden_size)
+            cell_h =  tf.nn.rnn_cell.LSTMCell(num_units = self.config.hidden_size) #tf.nn.rnn_cell.BasicLSTMCell(num_units = self.config.hidden_size) #Changed by Manisha
             cell_h = tf.nn.rnn_cell.DropoutWrapper(cell_h, output_keep_prob = self.dropout_placeholder)
             theInitializer = tf.contrib.layers.xavier_initializer(uniform = True, dtype = tf.float64)
 
@@ -69,7 +77,7 @@ class LSTMCondModel(OurModel):
 
         with tf.variable_scope('body'):
             # LSTM that handles the bodies
-            cell_b = tf.nn.rnn_cell.BasicLSTMCell(num_units = self.config.hidden_size)
+            cell_b =  tf.nn.rnn_cell.LSTMCell(num_units = self.config.hidden_size) #tf.nn.rnn_cell.BasicLSTMCell(num_units = self.config.hidden_size) #Changed by Manisha
             cell_b = tf.nn.rnn_cell.DropoutWrapper(cell_b, output_keep_prob = self.dropout_placeholder)
 
             U_b = tf.get_variable(name = 'U_b', shape = (self.config.hidden_size, self.config.n_classes), initializer = theInitializer, dtype = tf.float64)
@@ -90,7 +98,7 @@ class LSTMCondModel(OurModel):
         M = tf.tanh(M_1 + M_2)
         alpha = tf.reshape(tf.nn.softmax(tf.matmul(tf.reshape(M, shape = (-1, self.config.hidden_size)), w)), shape = (-1, self.config.attention_length))
 
-        r = tf.squeeze(tf.batch_matmul(tf.transpose(tf.expand_dims(alpha, 2), perm = [0, 2, 1]), Y))
+        r = tf.squeeze(tf.matmul(tf.transpose(tf.expand_dims(alpha, 2), perm = [0, 2, 1]), Y)) #Added by Manisha
         h_star = tf.tanh(tf.matmul(r, W_p) + tf.matmul(h_N, W_x))
 
         # Compute predictions
@@ -102,7 +110,7 @@ class LSTMCondModel(OurModel):
         with tf.variable_scope('head'):
 
             # LSTM that handles the headers
-            cell_h = tf.nn.rnn_cell.BasicLSTMCell(num_units = self.config.hidden_size)
+            cell_h =  tf.nn.rnn_cell.LSTMCell(num_units = self.config.hidden_size) #tf.nn.rnn_cell.BasicLSTMCell(num_units = self.config.hidden_size) #Changed by Manisha
             cell_h = tf.nn.rnn_cell.DropoutWrapper(cell_h, output_keep_prob = self.dropout_placeholder)
             theInitializer = tf.contrib.layers.xavier_initializer(uniform = True, dtype = tf.float64)
 
@@ -111,13 +119,22 @@ class LSTMCondModel(OurModel):
             if self.config.n_layers <= 1:
                 rnnOutput_h = tf.nn.dynamic_rnn(cell_h, inputs = x_header, dtype = tf.float64, sequence_length = self.headings_lengths_placeholder) #MODIF
             elif self.config.n_layers > 1:
-                stacked_lstm = tf.nn.rnn_cell.MultiRNNCell([cell_h] * self.config.n_layers)
+                #Added by Manisha
+                rnn_layers = []
+                for _ in range(self.config.n_layers):
+                    cell = tf.nn.rnn_cell.LSTMCell(num_units = self.config.hidden_size)
+                    cell = tf.nn.rnn_cell.DropoutWrapper(cell, output_keep_prob = self.dropout_placeholder)
+                    rnn_layers.append(cell)
+                
+                stacked_lstm = tf.nn.rnn_cell.MultiRNNCell(rnn_layers)
+                #Added by Manisha
+                #stacked_lstm = tf.nn.rnn_cell.MultiRNNCell([cell_h] * self.config.n_layers)
                 rnnOutput_h = tf.nn.dynamic_rnn(stacked_lstm, inputs = x_header, dtype = tf.float64, sequence_length = self.headings_lengths_placeholder) #MODIF
             Y = tf.slice(rnnOutput_h[0], begin = [0, 0, 0], size = [-1, self.config.attention_length, -1])
 
         with tf.variable_scope('body'):
             # LSTM that handles the bodies
-            cell_b = tf.nn.rnn_cell.BasicLSTMCell(num_units = self.config.hidden_size)
+            cell_b = tf.nn.rnn_cell.LSTMCell(num_units = self.config.hidden_size) #tf.nn.rnn_cell.BasicLSTMCell(num_units = self.config.hidden_size) #Changed by manisha
             cell_b = tf.nn.rnn_cell.DropoutWrapper(cell_b, output_keep_prob = self.dropout_placeholder)
 
             U_b = tf.get_variable(name = 'U_b', shape = (self.config.hidden_size, self.config.n_classes), initializer = theInitializer, dtype = tf.float64)
@@ -128,7 +145,16 @@ class LSTMCondModel(OurModel):
                 h_N = rnnOutput_b[1][1] # batch_size, cell.state_size
             elif self.config.n_layers > 1:
                 print('header rnn, ', len(rnnOutput_h[1]))
-                stacked_lstm = tf.nn.rnn_cell.MultiRNNCell([cell_b] * self.config.n_layers)
+                 #Added by Manisha
+                rnn_layers = []
+                for _ in range(self.config.n_layers):
+                    cell = tf.nn.rnn_cell.LSTMCell(num_units = self.config.hidden_size)
+                    cell = tf.nn.rnn_cell.DropoutWrapper(cell, output_keep_prob = self.dropout_placeholder)
+                    rnn_layers.append(cell)
+                
+                stacked_lstm = tf.nn.rnn_cell.MultiRNNCell(rnn_layers)
+                #Added by Manisha
+                #stacked_lstm = tf.nn.rnn_cell.MultiRNNCell([cell_b] * self.config.n_layers)
                 rnnOutput_b = tf.nn.dynamic_rnn(stacked_lstm, inputs = x_body, dtype = tf.float64, initial_state = rnnOutput_h[1], sequence_length = self.bodies_lengths_placeholder)
                 h_N = rnnOutput_b[1][self.config.n_layers - 1][1]
 
@@ -144,7 +170,7 @@ class LSTMCondModel(OurModel):
         M = tf.tanh(M_1 + M_2)
         alpha = tf.reshape(tf.nn.softmax(tf.matmul(tf.reshape(M, shape = (-1, self.config.hidden_size)), w)), shape = (-1, self.config.attention_length))
 
-        r = tf.squeeze(tf.batch_matmul(tf.transpose(tf.expand_dims(alpha, 2), perm = [0, 2, 1]), Y))
+        r = tf.squeeze(tf.matmul(tf.transpose(tf.expand_dims(alpha, 2), perm = [0, 2, 1]), Y))
         h_star = tf.tanh(tf.matmul(r, W_p) + tf.matmul(h_N, W_x))
 
         # Compute predictions
@@ -196,13 +222,14 @@ class LSTMCondModel(OurModel):
         # prog = Progbar(target=1 + int(len(train) / self.config.batch_size))
         losses = []
         # shuffle
-        ind = range(self.config.num_samples)
+        #ind = range(self.config.num_samples) #Commented by manisha
+        ind = list(range(self.config.num_samples)) #Added by manisha
         random.shuffle(ind)
         # sizes
         batch_start = 0
         batch_end = 0       
         N = self.config.batch_size
-        num_batches = self.config.num_samples / N
+        num_batches = self.config.num_samples // N #Updated by manisha
         # run batches
         for i in range(num_batches):
             batch_start = (i*N)

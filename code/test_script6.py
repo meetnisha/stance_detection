@@ -71,26 +71,29 @@ def run_bow_with_parameters(args):
   result = run_bow(config, final = True)
 
   ## Experiment 
-  # np.random.seed(1)
-  # config = Config()
-  # config.n_layers = 1
-  # config.xp = 'layers'
-  # config.model = 'bow'
-  # config.lr = 0.005
-  # config.trainable_embeddings = 'Variable'
-  # config.b_max_len = 75
-  # result = run_bow(config)
+  '''np.random.seed(1)
+  config = Config()
+  config.n_layers = 2
+  config.xp = 'layers'
+  config.model = 'bow'
+  config.lr = 0.005
+  config.trainable_embeddings = 'Variable'
+  config.b_max_len = 300
+  config.n_epochs = 40
+  result = run_bow(config)'''
 
   # ## Experiment 
-  # np.random.seed(1)
-  # config = Config()
-  # config.n_layers = 3
-  # config.xp = 'layers'
-  # config.model = 'bow'
-  # config.lr = 0.005
-  # config.trainable_embeddings = 'Constant'
-  # config.b_max_len = 75
-  # result = run_bow(config)
+  '''np.random.seed(1)
+  config = Config()
+  config.n_layers = 4
+  config.xp = 'layers'
+  config.model = 'bow'
+  config.lr = 0.001
+  config.trainable_embeddings = 'Variable'
+  config.b_max_len = 300
+  config.n_epochs = 50
+  config.batch_size = 64
+  result = run_bow(config)'''
 
   # ## Experiment 
   # np.random.seed(1)
@@ -99,7 +102,7 @@ def run_bow_with_parameters(args):
   # config.xp = 'layers'
   # config.model = 'bow'
   # config.lr = 0.005
-  # config.trainable_embeddings = 'Variable'
+  # config.trainable_embeddings = 'Constant'
   # config.b_max_len = 150
   # result = run_bow(config)
 
@@ -204,7 +207,7 @@ def run_bow_with_parameters(args):
 
 
 def run_lstm_with_parameters(args):
-  # Final test
+  # Final test  
   np.random.seed(1)
   config0 = Config()
   config0.max_length = 75
@@ -219,28 +222,27 @@ def run_lstm_with_parameters(args):
   config0.xp = 'final_test'
   config0.model = 'lstm_basic'
   result = run_lstm(config0, final = True)
-
-
+ 
   #### Testing Downsampling
 
   # # Experiment 1
   # # 2 layer, max_length = 75
-  # np.random.seed(1)
-  # config0 = Config()
+  '''np.random.seed(1)
+  config0 = Config()
   # # print('Running run_lstm_with_parameters')
   # # config0.n_layers = 0
-  # config0.max_length = 75
-  # config0.trainable_embeddings = 'Variable'
-  # config0.hidden_size = 100
-  # config0.n_epochs = 40
-  # config0.n_layers = 1
-  # config0.batch_size = 128
-  # config0.dropout = 0.8
-  # config0.n_layers = 1
-  # # config0.downsample = True
-  # config0.lr = 0.001
-  # config0.attention_length = 15
-  # result = run_lstm(config0)
+  config0.max_length = 75
+  config0.trainable_embeddings = 'Variable'
+  config0.hidden_size = 100
+  config0.n_epochs = 40
+  config0.n_layers = 1
+  config0.batch_size = 128
+  config0.dropout = 0.8
+  config0.n_layers = 1
+  config0.downsample = True
+  config0.lr = 0.001
+  config0.attention_length = 15
+  result = run_lstm(config0)'''
 
   # # # # Experiment 2
   # # # # 2 layer, max_length = 150
@@ -317,6 +319,21 @@ def run_lstm_with_parameters(args):
   # config5.n_layers = 4
   # config5.downsample = True
   # result = run_lstm(config5)
+  
+  '''np.random.seed(1)
+  config0 = Config()
+  config0.max_length = 75
+  config0.trainable_embeddings = 'Variable'
+  config0.hidden_size = 100
+  config0.n_epochs = 50
+  config0.n_layers = 4
+  config0.batch_size = 64
+  config0.dropout = 0.8
+  config0.lr = 0.001
+  config0.downsample = True
+  config0.xp = 'downsample'
+  config0.model = 'lstm_basic'
+  result = run_lstm(config0, final = True)'''
 
 
   # #### Testing Dropout
@@ -419,22 +436,22 @@ def run_lstm_attention_with_parameters(args):
   config0.attention_length = 15
   result = run_lstm_attention(config0, final = True)
 
-  # np.random.seed(1)
-  # config0 = Config()
+  '''np.random.seed(1)
+  config0 = Config()
   # # print('Running run_lstm_with_parameters')
-  # config0.max_length = 150
-  # config0.trainable_embeddings = 'Variable'
-  # config0.hidden_size = 100
-  # config0.n_epochs = 40
-  # config0.n_layers = 2
-  # config0.batch_size = 128
-  # config0.dropout = 0.8
-  # config0.n_layers = 4
-  # # config0.downsample = False
-  # config0.lr = 0.001
-  # # config0.num_samples = 
-  # config0.attention_length = 15
-  # result = run_lstm_attention(config0)
+  config0.max_length = 150
+  config0.trainable_embeddings = 'Variable'
+  config0.hidden_size = 100
+  config0.n_epochs = 50
+  config0.n_layers = 4
+  config0.batch_size = 64
+  config0.dropout = 0.8
+  config0.n_layers = 4
+  config0.downsample = True
+  config0.lr = 0.001
+  config0.attention_length = 15
+  config0.b_max_len = 300
+  result = run_lstm_attention(config0)'''
 
 
 
@@ -533,27 +550,27 @@ def run_lstm_conditional_with_parameters(args):
   result0 = run_lstm_conditional(config0, final = True)
 
 
-  # np.random.seed(1)
-  # config0 = Config()
-  # # print('Running run_lstm_with_parameters')
-  # # config0.n_layers = 0
-  # # config0.max_length = 75
-  # config0.trainable_embeddings = 'Variable'
-  # config0.hidden_size = 100
-  # config0.n_epochs = 40
-  # config0.n_layers = 1
-  # config0.batch_size = 128
-  # config0.dropout = 0.8
-  # config0.n_layers = 4
-  # config0.lr = 0.001
-  # # config0.num_samples = 100
-  # config0.b_max_len = 150
-  # # config0.downsample = True
-  # config0.attention_length = 15
-  # config0.xp = 'layers'
-  # config0.model = 'conditional_lstm'
-  # # print 'config0' + str(config0.__dict__)
-  # result0 = run_lstm_conditional(config0)
+  '''np.random.seed(1)
+  config0 = Config()
+  # print('Running run_lstm_with_parameters')
+  # config0.n_layers = 0
+  # config0.max_length = 75
+  config0.trainable_embeddings = 'Variable'
+  config0.hidden_size = 100
+  config0.n_epochs = 50
+  config0.n_layers = 1
+  config0.batch_size = 64
+  config0.dropout = 0.8
+  config0.n_layers = 4
+  config0.lr = 0.001
+  # config0.num_samples = 100
+  config0.b_max_len = 300
+  # config0.downsample = True
+  config0.attention_length = 15
+  config0.xp = 'layers'
+  config0.model = 'conditional_lstm'
+  # print 'config0' + str(config0.__dict__)
+  result0 = run_lstm_conditional(config0)'''
 
   # np.random.seed(1)
   # config1 = Config()
@@ -601,12 +618,12 @@ def run_lstm_conditional_with_parameters(args):
 
 if __name__ == "__main__":
   print("-- Running Test Script --")
-  print("-- Start BOW Experiments --")	
-  run_bow_with_parameters('')
+  #print("-- Start BOW Experiments --")	
+  #run_bow_with_parameters('')
   print("-- Start LSTM Basic Experiments --")	
   run_lstm_with_parameters('')
-  print("-- Start LSTM Attention Experiments --")
-  run_lstm_attention_with_parameters('')
-  print("-- Start LSTM Conditional Experiments --")
-  run_lstm_conditional_with_parameters('')
-  print("-- Finished Test Script --")
+  #print("-- Start LSTM Attention Experiments --")
+  #run_lstm_attention_with_parameters('')
+  #print("-- Start LSTM Conditional Experiments --")
+  #run_lstm_conditional_with_parameters('')
+  #print("-- Finished Test Script --")

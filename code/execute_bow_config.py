@@ -18,21 +18,22 @@ from run_text_processing import save_data_pickle, get_data
 ## currently using: split_indices
 # from our_util import Progbar, minibatches, pack_labels, split_data, split_indices, softmax, get_performance
 from our_util import split_indices, softmax, get_performance, convertOutputs #M
-
+base_path = '/Users/Monu/NLP/Stance/code'
+#base_path = '/home/jupiter/Manisha/code/'
 def run_save_data_pickle(): ## Needs NLTK to be installed!
-    save_data_pickle(outfilename = '/../../glove/twitter50d_h_ids_b_ids_pickle.p',
+    save_data_pickle(outfilename = '/glove/twitter50d_h_ids_b_ids_pickle.p',
                     embedding_type = 'twitter.27B.50d',
                     parserOption = 'nltk')
 
-def run_bow(config, split = True, outputpath = '../../xp', final = False): #M
+def run_bow(config, split = True, outputpath = base_path + '/xp', final = False): #M
 
 
 
     ## Get data
     # config, y, h, b, h_len, b_len = get_BOW_data(config, reload = True, save_data = False)
     config, data_dict = get_data(config, 
-            filename_embeddings = '/../../glove/glove.twitter.27B.50d.txt',
-            pickle_path = '/../../glove/twitter50d_h_ids_b_ids_pickle.p',
+            filename_embeddings = '/glove/glove.twitter.27B.50d.txt',
+            pickle_path = '/glove/twitter50d_h_ids_b_ids_pickle.p',
             concat = False)
 
     ## pass data into local namespace:
@@ -111,7 +112,7 @@ def run_bow(config, split = True, outputpath = '../../xp', final = False): #M
     
     ## Start Tensorflow!
     print('Starting TensorFlow operations')
-    print 'With hidden layers: ', config.n_layers ## hidden layer?
+    print('With hidden layers: ', config.n_layers) ## hidden layer?
     with tf.Graph().as_default():
         tf.set_random_seed(1)
         model = BOWModel(config)
@@ -123,8 +124,8 @@ def run_bow(config, split = True, outputpath = '../../xp', final = False): #M
     # Write results to csv
     convertOutputs(outputpath, config, losses_ep, dev_performances_ep)
 
-    print('Losses ', losses_ep)
-    print('Dev Performance ', dev_performances_ep) #M
+    #print('Losses ', losses_ep)
+    #print('Dev Performance ', dev_performances_ep) #M
     return losses_ep, dev_predicted_classes_ep, dev_performances_ep #M
 
 ## for debugging

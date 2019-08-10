@@ -17,7 +17,7 @@ from datetime import datetime
 
 import tensorflow as tf
 import numpy as np
-import cPickle as pickle
+import pickle
 
 from run_text_processing import get_data, save_data_pickle
 
@@ -29,16 +29,17 @@ from LSTM_attention import *
 logger = logging.getLogger("hw3.q3")
 logger.setLevel(logging.DEBUG)
 logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
-
+base_path = '/Users/Monu/NLP/Stance/code'
+#base_path = '/home/jupiter/Manisha/code/'
 def run_save_data_pickle():
-    save_data_pickle(outfilename = '/../../glove/twitter50d_h_ids_b_ids_pickle.p',
+    save_data_pickle(outfilename = '/glove/twitter50d_h_ids_b_ids_pickle.p',
                     embedding_type = 'twitter.27B.50d',
                     parserOption = 'nltk')
     
-def run_lstm_attention(config, outputpath = '../../xp', final = False):
+def run_lstm_attention(config, outputpath = base_path + '/xp', final = False):
     config, data_dict = get_data(config,
-                                filename_embeddings = '/../../glove/glove.twitter.27B.50d.txt',
-                                pickle_path = '/../../glove/twitter50d_h_ids_b_ids_pickle.p',
+                                filename_embeddings = '/glove/glove.twitter.27B.50d.txt',
+                                pickle_path = '/glove/twitter50d_h_ids_b_ids_pickle.p',
                                 concat = True)
 
     y = data_dict['y']

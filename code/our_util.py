@@ -9,13 +9,15 @@ from __future__ import division
 import sys
 import time
 import logging
-import StringIO
+from io import StringIO
+import io
 import pandas as pd
 from collections import defaultdict, Counter, OrderedDict
 import numpy as np
 from numpy import array, zeros, allclose
-
-
+outputpath = '/Users/Monu/NLP/Stance/code/xp'
+#outputpath = '/home/jupiter/Manisha/code/xp'
+from score import report_score, LABELS, score_submission, print_confusion_matrix
 def split_data(data, prop_train = 0.6, prop_dev = 0.2, seed = None):
     ## Generate hold-out data
     np.random.seed(seed)
@@ -29,7 +31,7 @@ def split_data(data, prop_train = 0.6, prop_dev = 0.2, seed = None):
         num_train_samples = int(np.floor(num_samples * prop_train))
         num_dev_samples = int(np.floor(num_samples * prop_dev))
 
-        indices = range(num_samples)
+        indices = list(range(num_samples))  #range(num_samples)
         np.random.shuffle(indices)
         
         train_indices = indices[0:num_train_samples]
@@ -46,7 +48,7 @@ def split_data(data, prop_train = 0.6, prop_dev = 0.2, seed = None):
         num_train_samples = int(np.floor(num_samples * prop_train))
         num_dev_samples = int(np.floor(num_samples * prop_dev))
         
-        indices = range(num_samples)
+        indices = list(range(num_samples)) #range(num_samples)
         np.random.shuffle(indices)
 
         # train_indices = indices[range(num_train_samples)]
@@ -63,7 +65,7 @@ def split_data(data, prop_train = 0.6, prop_dev = 0.2, seed = None):
 def split_indices(num_samples, prop_train = 0.6, prop_dev = 0.2):
     num_train_samples = int(np.floor(num_samples * prop_train))
     num_dev_samples = int(np.floor(num_samples * prop_dev))
-    indices = range(num_samples)
+    indices = list(range(num_samples))  #range(num_samples)
     np.random.shuffle(indices)
     train_indices = indices[0:num_train_samples]
     dev_indices = indices[num_train_samples:num_train_samples + num_dev_samples]
@@ -72,9 +74,9 @@ def split_indices(num_samples, prop_train = 0.6, prop_dev = 0.2):
 
 def test_data_splitting(data):
     test_data, train_data = split_data(data)
-    print 'Full data' + str(len(data))
-    print 'Test' + str(len(test_data))
-    print 'Train' + str(len(train_data))
+    print('Full data' + str(len(data)))
+    print( 'Test' + str(len(test_data)))
+    print( 'Train' + str(len(train_data)))
 
 # Returns a list of indices that should remain in the dataset
 def downsample_label(y, label_for_ds = 3, downsample_factor = 4):
@@ -125,7 +127,7 @@ def get_performance(predicted, truth, n_classes = None, outputStyle = 'dict'):
     assert len(predicted) == len(truth)
 
     # Compute competition score:
-    competition_score = scorer(predicted, truth)
+    competition_score = report_score([LABELS[e] for e in truth],[LABELS[e] for e in predicted]) #scorer(predicted, truth)
 
     output = []
     # If n_classes is unknown, infer from the labels
@@ -140,26 +142,26 @@ def get_performance(predicted, truth, n_classes = None, outputStyle = 'dict'):
         fp = sum((predicted == i) & (truth != i))
         fn = sum((predicted != i) & (truth == i))
 
-        print 'tp ' + str(tp)
-        print 'tn ' + str(tn)
-        print 'fp ' + str(fp)
-        print 'fn ' + str(fn)
+        print( 'tp ' + str(tp))
+        print( 'tn ' + str(tn))
+        print( 'fp ' + str(fp))
+        print( 'fn ' + str(fn))
 
         # Compute performance metrics
         recall = tp / (tp + fn) # aka sensitivity
-        print 'recall ' + str(recall)
+        print( 'recall ' + str(recall))
         precision = tp / (tp + fp) # aka ppv
-        print 'precision ' + str(precision)
+        print( 'precision ' + str(precision))
         specificity = tn / (tn + fp)
-        print 'specificity ' + str(specificity)
+        print( 'specificity ' + str(specificity))
         f1 = 2 * tp / (2 * tp + fp + fn)
-        print 'f1 ' + str(f1)
+        print( 'f1 ' + str(f1))
         accuracy = (tp + tn)/len(truth)
         
         keys = ['tp', 'tn', 'fp', 'fn', 'recall', 'precision', 'specificity', 'f1', 'accuracy', 'competition']
         values = [tp, tn , fp, fn, recall, precision, specificity, f1, accuracy, competition_score]
         output.append(dict(zip(keys, values)))
-
+    
     return output
 
 # Computes competition score
@@ -189,7 +191,7 @@ def convertOutputs(outputpath, config, losses_ep, dev_performances_ep): #MODIF
          
     # Define parameter keys
     parameter_keys = dir(config)
-    params_remove = ['__doc__', '__module__','pretrained_embeddings']
+    params_remove = ['__doc__', '__module__','__class__', '__delattr__', '__dict__', '__dir__', '__eq__', '__format__', '__ge__', '__getattribute__', '__gt__', '__hash__', '__init__', '__init_subclass__', '__le__', '__lt__', '__ne__', '__new__', '__reduce__', '__reduce_ex__', '__repr__', '__setattr__', '__sizeof__', '__str__', '__subclasshook__', '__weakref__', 'pretrained_embeddings']
     parameter_keys = [param for param in parameter_keys if param not in params_remove]
     print('parameter_keys', parameter_keys)
 
@@ -197,7 +199,7 @@ def convertOutputs(outputpath, config, losses_ep, dev_performances_ep): #MODIF
     
     # Define column names
     common_keys = parameter_keys + ['epoch'] # Common keys to all csv files
-    performance_keys = (dev_performances_ep[0][0]).keys() # [0] for epoch / [0] for 1st class
+    performance_keys = list(dev_performances_ep[0][0]) #(dev_performances_ep[0][0]).keys() #Changed by Manisha# [0] for epoch / [0] for 1st class
                        # Keys specific to performance output
     
     # Initialization        

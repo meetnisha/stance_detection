@@ -13,11 +13,14 @@ class BOWModel(OurModel):
     def add_placeholders(self):
         """Generates placeholder variables to represent the input tensors
         """
+        #print(self.config.h_max_len)
+       
         self.headings_placeholder = tf.placeholder(tf.int64, shape=(None, self.config.h_max_len), name="headings")
         self.bodies_placeholder = tf.placeholder(tf.int64, shape=(None, self.config.b_max_len), name="bodies")
         self.headings_lengths_placeholder = tf.placeholder(tf.float64, shape=(None), name="headings_lengths")
         self.bodies_lengths_placeholder = tf.placeholder(tf.float64, shape=(None), name="bodies_lengths")
         self.labels_placeholder = tf.placeholder(tf.int64, shape=(None), name="labels")
+        #print(self.headings_placeholder)
 
     def create_feed_dict(self, headings_batch, bodies_batch, headings_lengths_batch, bodies_lengths_batch, labels_batch=None):
         """Creates the feed_dict for the model.
@@ -39,20 +42,37 @@ class BOWModel(OurModel):
             embeddings_headings: tf.Tensor of shape (None, h_max_len, embed_size)
             embeddings_bodies: tf.Tensor of shape (None, b_max_len, embed_size)
         """
-        #
-        # embeddings_headings_temp = tf.nn.embedding_lookup(params = tf.Constant(self.config.pretrained_embeddings), ids = self.headings_placeholder)
-        # embeddings_bodies_temp = tf.nn.embedding_lookup(params = tf.Constant(self.config.pretrained_embeddings), ids = self.bodies_placeholder)
-        embeddings_headings_temp = tf.nn.embedding_lookup(params = self.config.pretrained_embeddings, ids = self.headings_placeholder)
-        embeddings_bodies_temp   = tf.nn.embedding_lookup(params = self.config.pretrained_embeddings, ids = self.bodies_placeholder)
-        embeddings_headings = tf.reshape(embeddings_headings_temp, shape = (-1, self.config.h_max_len, self.config.embed_size))
-        embeddings_bodies = tf.reshape(embeddings_bodies_temp, shape = (-1, self.config.b_max_len, self.config.embed_size))
+        ### Section updated by Manisha start
+        '''if option == 'Variable':            
+            embeddings_headings_temp = tf.nn.embedding_lookup(params = tf.Variable( tf.constant(0.0, shape=self.config.pretrained_embeddings.shape, dtype=tf.float64)), ids = self.headings_placeholder)
+            embeddings_bodies_temp = tf.nn.embedding_lookup(params = tf.Variable(tf.constant(0.0, shape=self.config.pretrained_embeddings.shape, dtype=tf.float64)), ids = self.bodies_placeholder)
+        elif option == 'Constant':
+            embeddings_headings_temp = tf.nn.embedding_lookup(params = tf.constant(tf.constant(0.0, shape=self.config.pretrained_embeddings.shape, dtype=tf.float64)), ids = self.headings_placeholder)
+            embeddings_bodies_temp = tf.nn.embedding_lookup(params = tf.constant(tf.constant(0.0, shape=self.config.pretrained_embeddings.shape, dtype=tf.float64)), ids = self.bodies_placeholder)'''
+        #print(tf.Variable( tf.constant(0.0, shape=self.config.pretrained_embeddings.shape, dtype=tf.float64)))
+        
+        headW = tf.Variable(tf.constant(0.0, shape=[self.config.h_max_len, self.config.embed_size], dtype=tf.float64), name="headW") #Added by Manisha
+        bodyW = tf.Variable(tf.constant(0.0, shape=[self.config.b_max_len, self.config.embed_size], dtype=tf.float64), name="bodyW") #Added by Manisha
+        embeddings_headings_temp = tf.nn.embedding_lookup(headW, ids = self.headings_placeholder)  #Added by Manisha
+        embeddings_bodies_temp = tf.nn.embedding_lookup(bodyW, ids = self.bodies_placeholder) #Added by Manisha
+        #tf_embedding = tf.Variable(tf.constant(0.0, shape=self.config.h_max_len), trainable=False,name="Embedding")
+        #embeddings_headings_temp = tf.nn.embedding_lookup(params = self.config.pretrained_embeddings, ids = self.headings_placeholder)
+        #embeddings_bodies_temp   = tf.nn.embedding_lookup(params = self.config.pretrained_embeddings, ids = self.bodies_placeholder)
+        ### Section updated by Manisha end
+        #print(embeddings_headings_temp, embeddings_bodies_temp)
+        embeddings_headings = tf.reshape(embeddings_headings_temp, shape = (-1, self.config.h_max_len, self.config.embed_size)) 
+        embeddings_bodies = tf.reshape(embeddings_bodies_temp, shape = (-1, self.config.b_max_len, self.config.embed_size)) 
+        #print(embeddings_headings, embeddings_bodies)
         return embeddings_headings, embeddings_bodies
 
     def add_bow_input(self):
         headings, bodies = self.add_embedding(option = self.config.trainable_embeddings)
+        #print(headings, headings.dtype)
+        #print(self.headings_lengths_placeholder, self.headings_lengths_placeholder.dtype)
         headings_bag = tf.divide(tf.reduce_sum(headings, axis=1), tf.reshape(self.headings_lengths_placeholder, shape = (-1, 1)))
         bodies_bag   = tf.divide(tf.reduce_sum(bodies, axis=1),   tf.reshape(self.bodies_lengths_placeholder, shape = (-1, 1)))
-        x = tf.concat_v2(values=[headings_bag, bodies_bag], axis=1)
+        #x = tf.concat_v2(values=[headings_bag, bodies_bag], axis=1) #Commented by manisha
+        x = tf.concat(values=[headings_bag, bodies_bag], axis=1)
         return x
 
     def add_prediction_op(self):
@@ -182,13 +202,14 @@ class BOWModel(OurModel):
     def run_epoch(self, sess, h_np, b_np, h_len, b_len, y):
         losses = []
         # shuffle
-        ind = range(self.config.num_samples)
+        #ind = range(self.config.num_samples) #Commented by manisha
+        ind = list(range(self.config.num_samples)) #Added by manisha
         random.shuffle(ind)
         # sizes
         batch_start = 0
         batch_end = 0       
         N = self.config.batch_size
-        num_batches = self.config.num_samples / N
+        num_batches = self.config.num_samples // N #Updated by manisha
         # run batches
         for i in range(num_batches):
             batch_start = (i*N)
@@ -238,7 +259,8 @@ class BOWModel(OurModel):
             # Computing development performance #MODIF
             dev_predictions = softmax(np.array(dev_predictions))
             dev_predicted_classes = np.argmax(dev_predictions, axis = 1)
-            dev_performance = get_performance(dev_predicted_classes, dev_y, n_classes = 4)
+            
+            dev_performance = get_performance(dev_predicted_classes, dev_y, n_classes = 4)            
 
             # Adding to global outputs #MODIF
             dev_predictions_epochs.append(dev_predictions)

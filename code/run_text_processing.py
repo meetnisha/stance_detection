@@ -7,20 +7,22 @@ Text processing of data
 import numpy as np
 import pandas as pd
 import os
-
-import cPickle as pickle
-
-from fnc_baseline.utils.score import report_score, LABELS, score_submission
-from fnc_baseline.utils.dataset import DataSet
+import re
+import pickle
+import nltk
+from sklearn import feature_extraction
+from score import report_score, LABELS, score_submission
+from dataset import DataSet
 
 import codecs
 import sys
-reload(sys) # for text processing
-sys.setdefaultencoding('utf8') # for text processing
+#reload(sys) # for text processing
+#sys.setdefaultencoding('utf8') # for text processing
 
 # ======== Load data =======
-
-def read_data(base_path = '/Users/spfohl/Documents/CS_224n/project/altfactcheckers'):
+base_path = '/Users/Monu/NLP/Stance/code'
+#base_path = '/home/jupiter/Manisha/code/'
+def read_data(): 
     
     # Extracting data
     dataset = DataSet(path = base_path + '/data')
@@ -34,30 +36,41 @@ def read_data(base_path = '/Users/spfohl/Documents/CS_224n/project/altfactchecke
         h.append(stance['Headline'])
         b.append(dataset.articles[stance['Body ID']])
     y = np.asarray(y, dtype = np.int64)
+    #print(h)
+    #print(b)
+    #print(y)
     return h, b, y
 
+       
+    
 # ----- Loading Glove embeddings ----
 def loadGloVe(filename):
+    #print(filename)
     # Getting embedding dimension
     file0 = open(filename,'r')
-    # file0 = codecs.open(filename, 'r', 'utf8', 'ignore')
+    #file0 = codecs.open(filename, 'r', 'utf8', 'ignore')
     line = file0.readline()
     emb_dim = len(line.strip().split(' ')) - 1
     file0.close()
 
     # First row of embedding matrix is 0 for zero padding
-    vocab = ['<pad>']
-    embd = [[0.0] * emb_dim]
-
+    vocab = ['<pad>'] #By Manisha - Using this
+    embd = [[0.0] * emb_dim] #By Manisha - Using this
+    #vocab = []
+    #embd = []
+    #model = {}
     # Reading embedding matrix
     file = open(filename,'r')
-    # file = codecs.open(filename, 'r', 'utf8', 'ignore')
+    file = codecs.open(filename, 'r', 'utf8', 'ignore')
     for line in file.readlines():
         row = line.strip().split(' ')
         vocab.append(row[0])
-        embd.append(map(float,row[1:]))
+        embd.append(row[1:])
+        #model[vocab] = embd
+        #embd.append(map(float,row[1:]))
     print('Loaded GloVe!')
     file.close()
+    
     return vocab,embd
 
 
@@ -68,20 +81,25 @@ def clean_data(sentences):
         - Rational: quote signs mix with the parsing
         - Con: quote signs are meaningul --> distanciation from a statement
     '''
+
     new_sentences = []
+    #new_sentences = " ".join(re.findall(r'\w+', sentence, flags=re.UNICODE)).lower()
     for sentence in sentences:
-        new_sentences.append(sentence.replace("'","").replace('"',''))
+        #print(sentence.replace("'","").replace('"',''))
+        #print(re.findall(r'\w+', sentence.lower(), flags=re.UNICODE))
+        new_sentences.append(sentence.replace("'","").replace('"','')) #re.findall(r'\w+', sentence.lower(), flags=re.UNICODE))#sentence.replace("'","").replace('"',''))
     return new_sentences
 
 # ---- Build vocab dictionary from embedding matrix -----
 def build_vocDict(vocab):
     voc_dict = {}
     for i in range(len(vocab)):
+        #print(vocab[i])
         voc_dict[vocab[i]] = i
     return voc_dict
 
 # -------- words to ids only -------
-#==========ADDED BY OSKAR============#
+
 def words2ids(sentences, voc_dict, option = 'simple'):
     '''
     Inputs: 
@@ -108,6 +126,7 @@ def words2ids(sentences, voc_dict, option = 'simple'):
             word_list = sentence.split(" ")
         
         for word in word_list:
+            word = word.decode("utf-8")
             if word.lower() in voc_dict: # Only add word if in dictionary
                 word_index = voc_dict[word.lower()]
                 sentence_ids.append(word_index)
@@ -116,9 +135,15 @@ def words2ids(sentences, voc_dict, option = 'simple'):
         #print ("added",j)
     return new_sentences_ids
 
+def normalize_word(w):
+    _wnl = nltk.WordNetLemmatizer()
+    return _wnl.lemmatize(w).lower()
+
+def remove_stopwords(l):
+    return [w for w in l if w not in feature_extraction.text.ENGLISH_STOP_WORDS]
 
 # -------- words to ids and vectors -------
-def words2ids_vects(sentences, voc_dict, embedding_matrix, option = 'simple'):
+def words2ids_vects(sentences, voc_dict, embedding_matrix, option = 'simple'):  
     '''
     Inputs: 
         - sentences: list of sentences as string
@@ -130,37 +155,47 @@ def words2ids_vects(sentences, voc_dict, embedding_matrix, option = 'simple'):
     Processing: delete word which do no appear in vocabulary
         - Alternative: replace missing words by the mean
     '''
-    
+    #print(voc_dict)
     new_sentences_ids = []
     new_sentences_vects = []
     j = 0
-    for sentence in sentences:
+    newsentences = clean_data(sentences)
+    for sentence in newsentences:
         j+=1
         if j % 5000 == 0:
             print ('sentence',str(j))
         sentence_ids = []
         sentence_vects = []
         if option == 'nltk':
-            sentence = sentence.decode('utf8', 'ignore')
+            #sentence = sentence.decode('utf8', 'ignore')
             # print('sentence', sentence)
-            word_list = tokenize(sentence)
+            wrdlst = tokenize(sentence)
+            word_list = remove_stopwords(wrdlst)
             # print('word_list', word_list)
         elif option == 'simple':
             word_list = sentence.split(" ")
-        
+        #print(word_list)
         for word in word_list:
-            if word.lower() in voc_dict: # Only add word if in dictionary
+            word = word.decode("utf-8")
+            if word.lower() in voc_dict: # Only add word if in dictionary                
                 word_index = voc_dict[word.lower()]
+                #print(word_index)
+                #print(embedding_matrix[word_index])
                 sentence_ids.append(word_index)
                 sentence_vects.append(embedding_matrix[word_index])
                 
         new_sentences_ids.append(sentence_ids)
         #print ("added", j)
+        #print(sentence_vects)
         new_sentences_vects.append(sentence_vects)
+    #print(new_sentences_vects)
     return new_sentences_ids, new_sentences_vects
 
 def tokenize(sequence):
+    #nltk.download('punkt')
+    tokenizer = nltk.data.load('tokenizers/punkt/english.pickle')
     tokens = [token.replace("``", '"').replace("''", '"') for token in nltk.word_tokenize(sequence)]
+    #tokens =  [normalize_word(t).replace("``", '"').replace("''", '"') for t in nltk.word_tokenize(sequence)]
     # return tokens
     return map(lambda x:x.encode('utf8', errors = 'ignore'), tokens)
 
@@ -225,17 +260,20 @@ def distinctConvert_np(h_list, b_list):
     return h_np, np.array(h_seqlen), b_np, np.array(b_seqlen)
 
 #------for nn_test--------#
-#==========ADDED BY OSKAR============#
+
 def get_BOW_data(config, reload = None, save_data = None):
     ## Random seed
     np.random.seed(1)
 
     # Define path
     cwd = os.getcwd()
-    filename_embeddings = cwd + '/../../glove/glove.6B.50d.txt'
-
+    #filename_embeddings = cwd + '/../../glove/glove.6B.50d.txt'
+    filename_embeddings = base_path + '/glove/glove.6B.50d.txt'
     # GloVe embeddings
+    #word_to_index, index_to_embedding = load_embedding_from_disks(filename_embeddings, with_indexes=True)
     vocab,embd = loadGloVe(filename_embeddings)
+    #vocab_size, embedding_dim = index_to_embedding.shape
+    #embd = list(np.array(index_to_embedding[idx], dtype=int))
     vocab_size = len(vocab)
     embedding_dim = len(embd[0])
     embedding = np.asarray(embd)
@@ -245,7 +283,7 @@ def get_BOW_data(config, reload = None, save_data = None):
         voc_dict = build_vocDict(vocab)
         
         # Read and process data
-        h, b, y = read_data(cwd + '/../../') # headline / bodies/ labels
+        h, b, y = read_data() #read_data(cwd + '/../../') # headline / bodies/ labels
         # h_ids, _ = words2ids_vects(h, voc_dict, embd)
         # b_ids, _ = words2ids_vects(b, voc_dict, embd)
         h_ids = words2ids(h, voc_dict)
@@ -260,7 +298,7 @@ def get_BOW_data(config, reload = None, save_data = None):
             if ((h_len[i] == 0) or (b_len[i] == 0)):
                 ind_empty.append(i)
                 # print(i)
-        print('Empty sequences: ', ind_empty)
+        #print('Empty sequences: ', ind_empty)
         if (len(ind_empty) > 0):
             y = np.delete(y, ind_empty)
             h = np.delete(h, ind_empty, 0)
@@ -306,72 +344,91 @@ def get_BOW_data(config, reload = None, save_data = None):
     # finish
     return config, y, h, b, h_len, b_len
 
-## Added by Stephen
+## Updated BY Manisha
 def save_data_pickle(outfilename, 
                     embedding_type = 'twitter.27B.50d',
                     parserOption = 'nltk'):
     cwd = os.getcwd()
     if embedding_type == 'twitter.27B.50d':
-        filename_embeddings = cwd + '/../../glove/glove.twitter.27B.50d.txt'
+        #filename_embeddings = cwd + '/../../glove/glove.twitter.27B.50d.txt'
+        filename_embeddings = base_path + '/glove/glove.twitter.27B.50d.txt'
     else: 
-        filename_embeddings = cwd + '/../../glove/glove.6B.50d.txt'
+        #filename_embeddings = cwd + '/../../glove/glove.6B.50d.txt'
+        filename_embeddings = base_path + '/glove/glove.6B.50d.txt'
 
     # filename_embeddings = cwd + filename_embeddings
 
     # GloVe embeddings
     vocab, embd = loadGloVe(filename_embeddings)
-    vocab_size = len(vocab)
-    embedding_dim = len(embd[0])
-    embedding = np.asarray(embd, dtype = np.float64)
+    #vocab_size = len(vocab)
+    #embedding_dim = len(embd[0])
+    #embedding = np.asarray(embd)
+    #embedding = np.asarray(embd, dtype = object)
 
     # Get vocab dict
     voc_dict = build_vocDict(vocab)
     
     # Read and process data
-    h, b, y = read_data(cwd + '/../../') # headline / bodies/ labels
+    h, b, y = read_data() #read_data(cwd + '/../../') # headline / bodies/ labels
+    
     h_ids, h_vects = words2ids_vects(h, voc_dict, embd, parserOption)
     b_ids, b_vects = words2ids_vects(b, voc_dict, embd, parserOption)
-    
+    #print(h_vects)
     # Concatenated headline_bodies zero padded np matrices; seq. lengths as np vector
     h_b_ids, h_b_np, seqlen = concatConvert_np(h_ids, b_ids)
     h_np, h_seqlen, b_np, b_seqlen = distinctConvert_np(h_ids, b_ids)
 
     data_dict = {'h_ids':h_ids, 'b_ids':b_ids, 'y':y}
-    with open(cwd + outfilename, 'wb') as fp:
-        pickle.dump(data_dict, fp)
+    with open(outfilename, 'wb') as fp:
+        pickle.dump(data_dict, fp) #pickle.dump(your_object, your_file, protocol=2) #portocol added by manisha for GPU python 2.7
+    return vocab, embd
 
-## Added by Stephen
+## Updated BY Manisha
 def get_data(config, 
-            filename_embeddings = '/../../glove/glove.twitter.27B.50d.txt',
-            pickle_path = '/../../glove/twitter50d_h_ids_b_ids_pickle.p',
+            filename_embeddings = '/glove/glove.twitter.27B.50d.txt',
+            pickle_path = '/glove/twitter50d_h_ids_b_ids_pickle.p',
             concat = True):
     # np.random.seed(41)
-
     # Base path
-    cwd = os.getcwd()
+    #cwd = os.getcwd()
+    load_path = base_path + pickle_path
+    #read_data()
+    #vocab, embd = save_data_pickle(load_path) #By Manisha - Comment this ones its loaded
+    
     # filename_embeddings = cwd + '/../../glove/glove.6B.50d.txt'
 
-    filename_embeddings = cwd + filename_embeddings
+    filename_embeddings = base_path + filename_embeddings
     
     # GloVe embeddings
     vocab, embd = loadGloVe(filename_embeddings)
+    #print(vocab)
+    #print(embd)
     vocab_size = len(vocab)
     embedding_dim = len(embd[0])
-    embedding = np.asarray(embd, dtype = np.float64)
+    #print(embd.dtype)
+    #embedding = np.asarray(embd, dtype = np.float64)
+    embedding = np.asarray(embd)
+    #print(vocab)
+    #print(embd)
+    #print(embedding)
 
     # Get vocab dict
-    voc_dict = build_vocDict(vocab)
-    
+    #voc_dict = build_vocDict(vocab)
+    #print(voc_dict)
     # Read and process data
-    # h, b, y = read_data(cwd + '/../../') # headline / bodies/ labels
-
+    #h, b, y = read_data() # headline / bodies/ labels
+    
     print('Loading Pickle')
-    load_path = cwd + pickle_path
+    #load_path = pickle_path
     with open (load_path, 'rb') as fp:
         data_dict = pickle.load(fp)
+    #print(data_dict)
     h_ids = data_dict['h_ids']
     b_ids = data_dict['b_ids']
     y = data_dict['y']
+    #print(h_ids)
+    #print(b_ids)
+    #print(y)
     print('finished loading Pickle')
     
     # Concatenated headline_bodies zero padded np matrices; seq. lengths as np vector
@@ -390,7 +447,7 @@ def get_data(config,
         for i in range(np.shape(h_np)[0]):
             if ((h_seqlen[i] == 0) or (b_seqlen[i] == 0)):
                 ind_empty.append(i)
-        print('Empty sequences: ', ind_empty)
+        #print('Empty sequences: ', ind_empty)
         if (len(ind_empty) > 0):
             y = np.delete(y, ind_empty)
             h_np = np.delete(h_np, ind_empty, 0)
@@ -402,33 +459,41 @@ def get_data(config,
                        'b_np':b_np, 
                        'h_seqlen':h_seqlen,
                        'b_seqlen':b_seqlen}
-
+    
+    #Have to check this
     config.embed_size = embedding_dim
     config.pretrained_embeddings = embedding
     config.vocab_size = vocab_size
     return config, output_dict
 
-# if __name__ == '__main__':
-#     # ========== YOUR OWN EMBEDDING MATRIX PATH HERE =========
-#     filename_embeddings = '/Users/spfohl/Documents/CS_224n/project/altfactcheckers/code/stephen_scratch/glove.6B/glove.6B.50d.txt'
+'''if __name__ == '__main__':
+     pickle_path = '/glove/twitter50d_h_ids_b_ids_pickle.p'
+     load_path = base_path + pickle_path
+    # config, data_dict = get_data(1028, 
+            #filename_embeddings = '/glove/glove.twitter.27B.50d.txt',
+           # pickle_path = '/glove/twitter50d_h_ids_b_ids_pickle.p',
+            #concat = False)
+     vocab, embd = save_data_pickle(load_path)
+     # ========== YOUR OWN EMBEDDING MATRIX PATH HERE =========
+     #filename_embeddings = '/Users/spfohl/Documents/CS_224n/project/altfactcheckers/code/stephen_scratch/glove.6B/glove.6B.50d.txt'
+     filename_embeddings = '/Users/Monu/NLP/Stance/code/glove/glove.6B.50d.txt'
+     # Glove
+     vocab,embd = loadGloVe(filename_embeddings)
+     vocab_size = len(vocab)
+     embedding_dim = len(embd[0])
+     embedding = np.asarray(embd)
+     #print(vocab_size)
+     print(embedding[0:5, :])
+     # Dictionary
+     voc_dict = build_vocDict(vocab)
     
-#     # Glove
-#     vocab,embd = loadGloVe(filename_embeddings)
-#     vocab_size = len(vocab)
-#     embedding_dim = len(embd[0])
-#     embedding = np.asarray(embd)
+     # Read and process data
+     h, b, y = read_data() # headline / bodies/ labels
+     h_ids, h_vects = words2ids_vects(h, voc_dict, embd)
+     b_ids, b_vects = words2ids_vects(b, voc_dict, embd)
     
-#     print(embedding[0:5, :])
-#     # Dictionary
-#     voc_dict = build_vocDict(vocab)
+     # Concatenated headline_bodies zero padded np matrices; seq. lengths as np vector
+     h_b_ids, h_b_np, seqlen = concatConvert_np(h_ids, b_ids)
     
-#     # Read and process data
-#     h, b, y = read_data() # headline / bodies/ labels
-#     h_ids, h_vects = words2ids_vects(h, voc_dict, embd)
-#     b_ids, b_vects = words2ids_vects(b, voc_dict, embd)
-    
-#     # Concatenated headline_bodies zero padded np matrices; seq. lengths as np vector
-#     h_b_ids, h_b_np, seqlen = concatConvert_np(h_ids, b_ids)
-    
-#     # Distinct headline / bodies zero padded np matrices; seq lengths as np vectors
-#     h_np, h_seqlen, b_np, b_seqlen = distinctConvert_np(h_ids, b_ids)
+     # Distinct headline / bodies zero padded np matrices; seq lengths as np vectors
+     h_np, h_seqlen, b_np, b_seqlen = distinctConvert_np(h_ids, b_ids)'''

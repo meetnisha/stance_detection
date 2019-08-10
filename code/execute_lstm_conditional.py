@@ -13,17 +13,18 @@ import random
 from LSTM_conditional import LSTMCondModel
 from run_text_processing import save_data_pickle, get_data
 from our_util import Progbar, minibatches, pack_labels, split_data, softmax, get_performance, convertOutputs, downsample_label, split_indices
-
+base_path = '/Users/Monu/NLP/Stance/code'
+#base_path = '/home/jupiter/Manisha/code/'
 def run_save_data_pickle(): ## Needs NLTK to be installed!
-    save_data_pickle(outfilename = '/../../glove/twitter50d_h_ids_b_ids_pickle.p',
+    save_data_pickle(outfilename = '/glove/twitter50d_h_ids_b_ids_pickle.p',
                     embedding_type = 'twitter.27B.50d',
                     parserOption = 'nltk')
 
-def run_lstm_conditional(config, split = True, outputpath = '../../xp', final = False):
+def run_lstm_conditional(config, split = True, outputpath = base_path + '/xp', final = False):
     ## Get data
     config, data_dict = get_data(config, 
-            filename_embeddings = '/../../glove/glove.twitter.27B.50d.txt',
-            pickle_path = '/../../glove/twitter50d_h_ids_b_ids_pickle.p',
+            filename_embeddings = '/glove/glove.twitter.27B.50d.txt',
+            pickle_path = '/glove/twitter50d_h_ids_b_ids_pickle.p',
             concat = False)
 
     ## pass data into local namespace:
@@ -100,7 +101,7 @@ def run_lstm_conditional(config, split = True, outputpath = '../../xp', final = 
     
     ## Start Tensorflow!
     print('Starting TensorFlow operations')
-    print 'With hidden layers: ', config.n_layers ## hidden layer?
+    print('With hidden layers: ', config.n_layers) ## hidden layer?
     with tf.Graph().as_default():
         tf.set_random_seed(1)
         model = LSTMCondModel(config)

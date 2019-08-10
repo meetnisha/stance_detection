@@ -57,7 +57,7 @@ class BaselineLSTM(OurModel):
 
         if self.config.n_layers <= 1:
             print('layers = ', self.config.n_layers)
-            cell = tf.nn.rnn_cell.BasicLSTMCell(num_units = self.config.hidden_size)
+            cell = tf.nn.rnn_cell.LSTMCell(num_units = self.config.hidden_size)#tf.nn.rnn_cell.BasicLSTMCell(num_units = self.config.hidden_size) #Changed by manisha
             cell = tf.nn.rnn_cell.DropoutWrapper(cell, output_keep_prob = self.dropout_placeholder)
             theInitializer = tf.contrib.layers.xavier_initializer(uniform = True, dtype = tf.float64)
             U = tf.get_variable(name = 'U', shape = (self.config.hidden_size, self.config.n_classes), initializer = theInitializer, dtype = tf.float64)
@@ -69,9 +69,18 @@ class BaselineLSTM(OurModel):
             preds = tf.matmul(finalState, U) + b # batch_size, n_classes
         # print('Predict op: preds', preds)
         elif self.config.n_layers > 1: # MODIF
-            cell = tf.nn.rnn_cell.BasicLSTMCell(num_units = self.config.hidden_size)
+            #Added by Manisha
+            rnn_layers = []
+            for _ in range(self.config.n_layers):
+                cell = tf.nn.rnn_cell.LSTMCell(num_units = self.config.hidden_size)
+                cell = tf.nn.rnn_cell.DropoutWrapper(cell, output_keep_prob = self.dropout_placeholder)
+                rnn_layers.append(cell)
+            
+            stacked_lstm = tf.nn.rnn_cell.MultiRNNCell(rnn_layers)
+            #Added by Manisha
+            '''cell = tf.nn.rnn_cell.LSTMCell(num_units = self.config.hidden_size) #tf.nn.rnn_cell.BasicLSTMCell(num_units = self.config.hidden_size)
             cell = tf.nn.rnn_cell.DropoutWrapper(cell, output_keep_prob = self.dropout_placeholder)
-            stacked_lstm = tf.nn.rnn_cell.MultiRNNCell([cell] * self.config.n_layers)
+            stacked_lstm = tf.nn.rnn_cell.MultiRNNCell([cell] * self.config.n_layers)'''
             theInitializer = tf.contrib.layers.xavier_initializer(uniform = True, dtype = tf.float64)
             U = tf.get_variable(name = 'U', shape = (self.config.hidden_size, self.config.n_classes), initializer = theInitializer, dtype = tf.float64)
             b = tf.get_variable(name = 'b', shape = (self.config.n_classes), initializer = theInitializer, dtype = tf.float64)
@@ -90,10 +99,11 @@ class BaselineLSTM(OurModel):
             embeddings: tf.Tensor of shape (None, max_length, n_features*embed_size)
         """
         # option = config.trainable_embeddings
+        varW = tf.Variable(tf.constant(0.0, shape=[self.config.max_length, self.config.embed_size], dtype=tf.float64), name="varW") #Added by Manisha
         if option == 'Variable':
-            embeddings_temp = tf.nn.embedding_lookup(params = tf.Variable(self.config.pretrained_embeddings), ids = self.inputs_placeholder)
+            embeddings_temp = tf.nn.embedding_lookup(varW, ids = self.inputs_placeholder) #chnaged by Manisha
         elif option == 'Constant':
-            embeddings_temp = tf.nn.embedding_lookup(params = tf.constant(self.config.pretrained_embeddings), ids = self.inputs_placeholder)
+            embeddings_temp = tf.nn.embedding_lookup(params = tf.constant(self.config.pretrained_embeddings), ids = self.inputs_placeholder) #chnaged by Manisha
         embeddings = tf.reshape(embeddings_temp, shape = (-1, self.config.max_length, self.config.embed_size))
         ### END YOUR CODE
         return embeddings
